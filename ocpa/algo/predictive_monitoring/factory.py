@@ -172,12 +172,17 @@ def apply(ocel, event_based_features=[], execution_based_features=[], event_attr
                        range(0, len(ocel.process_executions))]
     # Shuffle parameter space to avoid that one process gets only very long-running cases
     shuffle(parameter_space)
-    chunksize, extra = divmod(len(parameter_space), workers * 16)
-    if extra:
-        chunksize += 1
-    with Pool(workers) as pool:
-        for f_g in tqdm.tqdm(pool.imap_unordered(_apply_to_process_execution, parameter_space, chunksize=chunksize),
-                             total=len(parameter_space)):
+
+    if workers > 1:
+        chunksize, extra = divmod(len(parameter_space), workers * 16)
+        if extra:
+            chunksize += 1
+        with Pool(workers) as pool:
+            for f_g in tqdm.tqdm(pool.imap_unordered(_apply_to_process_execution, parameter_space, chunksize=chunksize),
+                                 total=len(parameter_space)):
+                feature_storage.add_feature_graph(f_g)
+    else:
+        for f_g in tqdm.tqdm(map(_apply_to_process_execution, parameter_space), total=len(parameter_space)):
             feature_storage.add_feature_graph(f_g)
     del ocel.log.log["event_objects"]
     return feature_storage
